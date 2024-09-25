@@ -16,7 +16,7 @@ pub struct Signal {
 #[cfg(test)]
 mod tests {
     use anyhow::Result;
-    use plonky2::field::field_types::Field;
+    use plonky2::field::types::{Field, Sample};
     use plonky2::hash::merkle_tree::MerkleTree;
     use plonky2::hash::poseidon::PoseidonHash;
     use plonky2::plonk::config::Hasher;
@@ -27,7 +27,7 @@ mod tests {
     #[test]
     fn test_semaphore() -> Result<()> {
         let n = 1 << 20;
-        let private_keys: Vec<Digest> = (0..n).map(|_| F::rand_arr()).collect();
+        let private_keys: Vec<Digest> = (0..n).map(|_| F::rand_array()).collect();
         let public_keys: Vec<Vec<F>> = private_keys
             .iter()
             .map(|&sk| {
@@ -39,7 +39,7 @@ mod tests {
         let access_set = AccessSet(MerkleTree::new(public_keys, 0));
 
         let i = 12;
-        let topic = F::rand_arr();
+        let topic = F::rand_array();
 
         let (signal, vd) = access_set.make_signal(private_keys[i], topic, i)?;
         access_set.verify_signal(topic, signal, &vd)

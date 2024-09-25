@@ -1,9 +1,10 @@
-use plonky2::field::field_types::Field;
-use plonky2::hash::hash_types::{HashOutTarget, MerkleCapTarget};
+use anyhow::Result;
+use plonky2::field::types::Field;
+use plonky2::hash::hash_types::HashOutTarget;
 use plonky2::hash::merkle_proofs::MerkleProofTarget;
 use plonky2::hash::poseidon::PoseidonHash;
 use plonky2::iop::target::Target;
-use plonky2::iop::witness::{PartialWitness, Witness};
+use plonky2::iop::witness::{PartialWitness, WitnessWrite};
 use plonky2::plonk::circuit_builder::CircuitBuilder;
 
 use crate::access_set::AccessSet;
@@ -44,7 +45,7 @@ impl AccessSet {
         builder.verify_merkle_proof::<PoseidonHash>(
             [private_key, [zero; 4]].concat(),
             &public_key_index_bits,
-            &MerkleCapTarget(vec![merkle_root]),
+            merkle_root,
             &merkle_proof,
         );
 
@@ -71,7 +72,7 @@ impl AccessSet {
         topic: Digest,
         public_key_index: usize,
         targets: SemaphoreTargets,
-    ) {
+    ) -> Result<()> {
         let SemaphoreTargets {
             merkle_root,
             topic: topic_target,
@@ -80,13 +81,13 @@ impl AccessSet {
             public_key_index: public_key_index_target,
         } = targets;
 
-        pw.set_hash_target(merkle_root, self.0.cap.0[0]);
-        pw.set_targets(&private_key_target, &private_key);
-        pw.set_targets(&topic_target, &topic);
+        pw.set_hash_target(merkle_root, self.0.cap.0[0])?;
+        pw.set_target_arr(&private_key_target, &private_key)?;
+        pw.set_target_arr(&topic_target, &topic)?;
         pw.set_target(
             public_key_index_target,
             F::from_canonical_usize(public_key_index),
-        );
+        )?;
 
         let merkle_proof = self.0.prove(public_key_index);
         for (ht, h) in merkle_proof_target
@@ -94,7 +95,8 @@ impl AccessSet {
             .into_iter()
             .zip(merkle_proof.siblings)
         {
-            pw.set_hash_target(ht, h);
+            pw.set_hash_target(ht, h)?;
         }
+        Ok(())
     }
 }

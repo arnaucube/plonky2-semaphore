@@ -1,6 +1,7 @@
-use plonky2::iop::witness::{PartialWitness, Witness};
+use anyhow::Result;
+use plonky2::iop::witness::{PartialWitness, WitnessWrite};
 use plonky2::plonk::circuit_builder::CircuitBuilder;
-use plonky2::plonk::circuit_data::{CircuitConfig, VerifierCircuitData, VerifierCircuitTarget};
+use plonky2::plonk::circuit_data::{CircuitConfig, VerifierCircuitData};
 use plonky2::plonk::proof::ProofWithPublicInputs;
 
 use crate::access_set::AccessSet;
@@ -14,7 +15,7 @@ impl AccessSet {
         topic1: Digest,
         signal1: Signal,
         verifier_data: &VerifierCircuitData<F, C, 2>,
-    ) -> (Digest, Digest, PlonkyProof) {
+    ) -> Result<(Digest, Digest, PlonkyProof, VerifierCircuitData<F, C, 2>)> {
         let config = CircuitConfig::standard_recursion_zk_config();
         let mut builder = CircuitBuilder::new(config);
         let mut pw = PartialWitness::new();
@@ -45,7 +46,7 @@ impl AccessSet {
                 proof: signal0.proof,
                 public_inputs: public_inputs0,
             },
-        );
+        )?;
         let proof_target1 = builder.add_virtual_proof_with_pis(&verifier_data.common);
         pw.set_proof_with_pis_target(
             &proof_target1,
@@ -53,25 +54,28 @@ impl AccessSet {
                 proof: signal1.proof,
                 public_inputs: public_inputs1,
             },
-        );
+        )?;
 
-        let vd_target = VerifierCircuitTarget {
-            constants_sigmas_cap: builder
-                .add_virtual_cap(verifier_data.common.config.fri_config.cap_height),
-        };
+        let vd_target =
+            builder.add_virtual_verifier_data(verifier_data.common.config.fri_config.cap_height);
         pw.set_cap_target(
             &vd_target.constants_sigmas_cap,
             &verifier_data.verifier_only.constants_sigmas_cap,
-        );
+        )?;
 
-        builder.verify_proof(proof_target0, &vd_target, &verifier_data.common);
-        builder.verify_proof(proof_target1, &vd_target, &verifier_data.common);
+        builder.verify_proof::<C>(&proof_target0, &vd_target, &verifier_data.common);
+        builder.verify_proof::<C>(&proof_target1, &vd_target, &verifier_data.common);
 
         let data = builder.build();
         let recursive_proof = data.prove(pw).unwrap();
 
         data.verify(recursive_proof.clone()).unwrap();
 
-        (signal0.nullifier, signal1.nullifier, recursive_proof.proof)
+        Ok((
+            signal0.nullifier,
+            signal1.nullifier,
+            recursive_proof.proof,
+            data.verifier_data(),
+        ))
     }
 }
