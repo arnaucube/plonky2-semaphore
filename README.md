@@ -1,4 +1,4 @@
-# Plonky2 implementation of the [Semaphore protocol](http://semaphore.appliedzkp.org/)
+# Plonky2 implementation of the [Semaphore protocol](https://semaphore.pse.dev)
 
 Used as an example in the ZKHack Plonky2 presentation.
 

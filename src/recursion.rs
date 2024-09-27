@@ -39,8 +39,13 @@ impl AccessSet {
             .chain(topic1)
             .collect();
 
+        // `add_virtual_proof_with_pis` is an extended version of the `add_virtual_target`, but
+        // that takes care of adding all the values of the proof and the public inputs (pis).
         let proof_target0 = builder.add_virtual_proof_with_pis(&verifier_data.common);
+        // set the public inputs
         builder.register_public_inputs(&proof_target0.public_inputs);
+        // `set_proof_with_pis_target` is an extended version of the `set_target`, but that takes
+        // care of adding all the values of the proof and the public inputs.
         pw.set_proof_with_pis_target(
             &proof_target0,
             &ProofWithPublicInputs {
@@ -48,10 +53,12 @@ impl AccessSet {
                 public_inputs: public_inputs0,
             },
         )?;
+        // add & set the verifier data
         let vd_target =
             builder.add_virtual_verifier_data(verifier_data.common.config.fri_config.cap_height);
         pw.set_verifier_data_target(&vd_target, &verifier_data.verifier_only)?;
 
+        // now, the same as we did with the proof0, with the proof1 related values:
         let proof_target1 = builder.add_virtual_proof_with_pis(&verifier_data.common);
         builder.register_public_inputs(&proof_target1.public_inputs);
         pw.set_proof_with_pis_target(
@@ -95,7 +102,6 @@ mod tests {
     use plonky2::hash::poseidon::PoseidonHash;
     use plonky2::plonk::config::Hasher;
     use plonky2::plonk::proof::ProofWithPublicInputs;
-    use std::time::Instant;
 
     use crate::access_set::AccessSet;
     use crate::signal::{Digest, F};
@@ -117,24 +123,18 @@ mod tests {
         // first proof
         let i0 = 12;
         let topic0 = F::rand_array();
-        let start = Instant::now();
         let (signal0, vd0) = access_set.make_signal(private_keys[i0], topic0, i0)?;
-        println!("generate proof: {:?}", start.elapsed());
         access_set.verify_signal(topic0, signal0.clone(), &vd0)?;
 
         // second proof
         let i1 = 42;
         let topic1 = F::rand_array();
-        let start = Instant::now();
         let (signal1, vd1) = access_set.make_signal(private_keys[i1], topic1, i1)?;
-        println!("generate proof: {:?}", start.elapsed());
         access_set.verify_signal(topic1, signal1.clone(), &vd1)?;
 
         // generate recursive proof
-        let start = Instant::now();
         let (nullifier0, nullifier1, recursive_proof, vd2) =
             access_set.aggregate_signals(topic0, signal0, topic1, signal1, &vd0)?;
-        println!("aggregate_signals (recursive prove): {:?}", start.elapsed());
 
         // verify recursive proof
         let public_inputs: Vec<F> = access_set
@@ -150,12 +150,10 @@ mod tests {
             .chain(topic1)
             .collect();
 
-        let start = Instant::now();
         vd2.verify(ProofWithPublicInputs {
             proof: recursive_proof,
             public_inputs,
         })?;
-        println!("verify recursive proof: {:?}", start.elapsed());
         Ok(())
     }
 }

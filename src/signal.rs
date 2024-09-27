@@ -41,7 +41,9 @@ mod tests {
         let i = 12;
         let topic = F::rand_array();
 
+        // generate the plonky2 proof for the given key
         let (signal, vd) = access_set.make_signal(private_keys[i], topic, i)?;
+        // verify the plonky2 proof (contained in `signal`
         access_set.verify_signal(topic, signal, &vd)
     }
 }
