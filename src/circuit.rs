@@ -24,6 +24,19 @@ impl AccessSet {
     }
 
     pub fn semaphore_circuit(&self, builder: &mut CircuitBuilder<F, 2>) -> SemaphoreTargets {
+        // To create the circuit 'values', we call the `add_virtual_target` and it's variants (ie.
+        // `add_virtual_target_arr`, or `add_virtual_hash` which internally calls it for the 4
+        // field values that conform the hash.
+        // The method `add_virtual_target` keeps an incremental index for each new virtual target
+        // created, and returns a new `VirtualTarget`, used for intermediate values in witness
+        // generation (which when needed can be copied to specific witness location (Wire)).
+        //
+        // The `register_public_input` and it's variants, append to the CircuitBuilder's
+        // `public_inputs` vector the given Target (either VirtualTarget or Wire).
+        //
+        // Notice that when created, the targets are not given any value, and they will be set later
+        // at the method `fill_semaphore_targets`.
+
         // Register public inputs.
         let merkle_root = builder.add_virtual_hash();
         builder.register_public_inputs(&merkle_root.elements);
@@ -65,6 +78,8 @@ impl AccessSet {
         }
     }
 
+    // Fill the semaphore targets that we defined at the method `semaphore_circuit` with the given
+    // values.
     pub fn fill_semaphore_targets(
         &self,
         pw: &mut PartialWitness<F>,

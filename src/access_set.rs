@@ -12,6 +12,7 @@ use crate::signal::{Digest, Signal, C, F};
 pub struct AccessSet(pub MerkleTree<F, PoseidonHash>);
 
 impl AccessSet {
+    // Verify the plonky2 proof of the given nullifier (in the signal structure) and topic.
     pub fn verify_signal(
         &self,
         topic: Digest,
@@ -34,6 +35,7 @@ impl AccessSet {
         })
     }
 
+    // Generate the plonky2 proof for the given key pair and topic.
     pub fn make_signal(
         &self,
         private_key: Digest,
